@@ -21,7 +21,7 @@
         .header h1 { font-size: 2em; color: #f39c12; }
         .header p { color: #bbb; margin-top: 8px; }
         .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-        
+
         /* 标签页导航 */
         .tabs {
             display: flex;
@@ -45,11 +45,11 @@
             color: #1a1a2e;
             font-weight: bold;
         }
-        
+
         /* 内容区 */
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        
+
         /* 搜索框 */
         .search-box {
             margin-bottom: 15px;
@@ -71,7 +71,7 @@
             border-color: #f39c12;
         }
         .search-box select option { background: #1a1a2e; }
-        
+
         /* 表格样式 */
         .table-wrapper {
             overflow-x: auto;
@@ -97,7 +97,7 @@
             top: 0;
         }
         tr:hover { background: rgba(255,255,255,0.05); }
-        
+
         /* 名人堂标记 */
         .hall-of-fame { color: #f39c12; font-weight: bold; }
         .badge {
@@ -108,7 +108,7 @@
         }
         .badge-gold { background: #f39c12; color: #1a1a2e; }
         .badge-blue { background: #3498db; color: #fff; }
-        
+
         /* 统计卡片 */
         .stats-grid {
             display: grid;
@@ -124,7 +124,55 @@
         }
         .stat-card .number { font-size: 2.5em; color: #f39c12; font-weight: bold; }
         .stat-card .label { color: #aaa; margin-top: 5px; }
-        
+
+        /* 分页容器 */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        /* 分页按钮（统一为 tab 风格） */
+        .page-btn {
+            padding: 8px 14px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.25s;
+            font-size: 0.95em;
+        }
+
+        .page-btn:hover:not(.active):not(:disabled) {
+            background: rgba(243,156,18,0.3);
+            border-color: #f39c12;
+        }
+
+        /* 当前页 */
+        .page-btn.active {
+            background: #f39c12;
+            color: #1a1a2e;
+            font-weight: bold;
+            cursor: default;
+        }
+
+        /* 禁用状态 */
+        .page-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* 省略号 */
+        .page-ellipsis {
+            padding: 8px 6px;
+            color: #aaa;
+            font-size: 1em;
+        }
+
         /* 加载状态 */
         .loading { text-align: center; padding: 40px; color: #aaa; }
     </style>
@@ -177,6 +225,9 @@
                 </tbody>
             </table>
         </div>
+        <div id="pagination" class="pagination"></div>
+
+
     </div>
 
     <!-- 位置字典 -->
@@ -221,10 +272,15 @@
 </div>
 
 <script>
+
     let allPlayers = [];
     let allPositions = [];
     let allColleges = [];
     let playerMap = {};
+
+    let currentPage = 1;
+    const pageSize = 24;
+    let filteredPlayersCache = [];
 
     // 切换标签页
     function showTab(tabId) {
@@ -250,25 +306,36 @@
 
     // 渲染球员表格
     function renderPlayers(players) {
+        filteredPlayersCache = players;
+
         const tbody = document.getElementById('playerTable');
         if (players.length === 0) {
             tbody.innerHTML = '<tr><td colspan="9">暂无数据</td></tr>';
+            document.getElementById('pagination').innerHTML = '';
             return;
         }
-        tbody.innerHTML = players.map(p => `
-            <tr>
-                <td>${p.playerId}</td>
-                <td class="${p.isHallOfFame ? 'hall-of-fame' : ''}">${p.playerName}</td>
-                <td><span class="badge badge-blue">${p.position || '-'}</span></td>
-                <td>${p.isHallOfFame ? '<span class="badge badge-gold">🏆 名人堂</span>' : '-'}</td>
-                <td>${p.nbaDebutYear || '-'}</td>
-                <td>${p.nbaFinalYear || '-'}</td>
-                <td>${p.heightFt ? p.heightFt + "'" + (p.heightIn || 0) + '"' : '-'}</td>
-                <td>${p.weightLbs || '-'}</td>
-                <td>${p.birthDate || '-'}</td>
-            </tr>
-        `).join('');
+
+        const start = (currentPage - 1) * pageSize;
+        const end = start + pageSize;
+        const pageData = players.slice(start, end);
+
+        tbody.innerHTML = pageData.map(p => `
+        <tr>
+            <td>${p.playerId}</td>
+            <td class="${p.isHallOfFame ? 'hall-of-fame' : ''}">${p.playerName}</td>
+            <td><span class="badge badge-blue">${p.position || '-'}</span></td>
+            <td>${p.isHallOfFame ? '<span class="badge badge-gold">🏆 名人堂</span>' : '-'}</td>
+            <td>${p.nbaDebutYear || '-'}</td>
+            <td>${p.nbaFinalYear || '-'}</td>
+            <td>${p.heightFt ? p.heightFt + "'" + (p.heightIn || 0) + '"' : '-'}</td>
+            <td>${p.weightLbs || '-'}</td>
+            <td>${p.birthDate || '-'}</td>
+        </tr>
+    `).join('');
+
+        renderPagination(players.length);
     }
+
 
     // 渲染统计卡片
     function renderPlayerStats() {
@@ -287,15 +354,18 @@
         const search = document.getElementById('playerSearch').value.toLowerCase();
         const position = document.getElementById('positionFilter').value;
         const hof = document.getElementById('hofFilter').value;
-        
-        let filtered = allPlayers.filter(p => {
+
+        const filtered = allPlayers.filter(p => {
             const matchName = p.playerName.toLowerCase().includes(search);
             const matchPos = !position || p.position === position;
             const matchHof = hof === '' || (hof === '1' ? p.isHallOfFame : !p.isHallOfFame);
             return matchName && matchPos && matchHof;
         });
+
+        currentPage = 1;   // ⭐ 重置页码
         renderPlayers(filtered);
     }
+
 
     // 加载位置数据
     async function loadPositions() {
@@ -338,7 +408,7 @@
     async function loadColleges() {
         try {
             // 获取所有球员的大学信息
-            const collegePromises = allPlayers.slice(0, 100).map(p => 
+            const collegePromises = allPlayers.slice(0, 100).map(p =>
                 fetch(`/api/player-colleges/player/${p.playerId}`).then(r => r.json()).catch(() => [])
             );
             const results = await Promise.all(collegePromises);
@@ -370,6 +440,76 @@
         const filtered = allColleges.filter(c => c.collegeName.toLowerCase().includes(search));
         renderColleges(filtered);
     }
+
+    // 分页
+    function renderPagination(total) {
+        const totalPages = Math.ceil(total / pageSize);
+        const container = document.getElementById('pagination');
+
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const maxAround = 2;
+        let html = '';
+
+        // 上一页
+        html += `
+        <button class="page-btn"
+            onclick="changePage(${currentPage - 1})"
+            ${currentPage === 1 ? 'disabled' : ''}>
+            上一页
+        </button>
+    `;
+
+        const pages = [];
+        pages.push(1);
+
+        let start = Math.max(2, currentPage - maxAround);
+        let end = Math.min(totalPages - 1, currentPage + maxAround);
+
+        if (start > 2) pages.push('...');
+        for (let i = start; i <= end; i++) pages.push(i);
+        if (end < totalPages - 1) pages.push('...');
+
+        pages.push(totalPages);
+
+        pages.forEach(p => {
+            if (p === '...') {
+                html += `<span class="page-ellipsis">...</span>`;
+            } else if (p === currentPage) {
+                html += `<button class="page-btn active">${p}</button>`;
+            } else {
+                html += `
+                <button class="page-btn" onclick="changePage(${p})">
+                    ${p}
+                </button>
+            `;
+            }
+        });
+
+        // 下一页
+        html += `
+        <button class="page-btn"
+            onclick="changePage(${currentPage + 1})"
+            ${currentPage === totalPages ? 'disabled' : ''}>
+            下一页
+        </button>
+    `;
+
+        container.innerHTML = html;
+    }
+
+
+
+    function changePage(page) {
+        const totalPages = Math.ceil(filteredPlayersCache.length / pageSize);
+        if (page < 1 || page > totalPages) return;
+        currentPage = page;
+        renderPlayers(filteredPlayersCache);
+    }
+
 
     // 初始化
     async function init() {
