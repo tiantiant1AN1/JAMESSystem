@@ -187,6 +187,7 @@
     <!-- 标签页导航 -->
     <div class="tabs">
         <button class="tab-btn active" onclick="showTab('players')">👤 球员列表</button>
+        <button class="tab-btn" onclick="showTab('teams')">🏀 球队列表</button>
         <button class="tab-btn" onclick="showTab('positions')">📍 位置字典</button>
         <button class="tab-btn" onclick="showTab('colleges')">🎓 球员大学</button>
     </div>
@@ -230,6 +231,42 @@
 
     </div>
 
+    <!-- 球队列表 -->
+    <div id="teams" class="tab-content">
+        <div class="stats-grid" id="teamStats"></div>
+        <div class="search-box">
+            <input type="text" id="teamSearch" placeholder="搜索球队名称..." onkeyup="filterTeams()">
+            <select id="champFilter" onchange="filterTeams()">
+                <option value="">全部球队</option>
+                <option value="1">有总冠军</option>
+                <option value="0">无总冠军</option>
+            </select>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>球队名称</th>
+                        <th>联盟</th>
+                        <th>成立</th>
+                        <th>年数</th>
+                        <th>胜</th>
+                        <th>负</th>
+                        <th>胜率</th>
+                        <th>季后赛</th>
+                        <th>分区冠军</th>
+                        <th>联盟冠军</th>
+                        <th>总冠军</th>
+                    </tr>
+                </thead>
+                <tbody id="teamTable">
+                    <tr><td colspan="11" class="loading">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="teamPagination" class="pagination"></div>
+    </div>
+
     <!-- 位置字典 -->
     <div id="positions" class="tab-content">
         <div class="table-wrapper">
@@ -246,6 +283,7 @@
                 </tbody>
             </table>
         </div>
+        <div id="positionPagination" class="pagination"></div>
     </div>
 
     <!-- 球员大学 -->
@@ -268,6 +306,7 @@
                 </tbody>
             </table>
         </div>
+        <div id="collegePagination" class="pagination"></div>
     </div>
 </div>
 
@@ -276,11 +315,17 @@
     let allPlayers = [];
     let allPositions = [];
     let allColleges = [];
+    let allTeams = [];
     let playerMap = {};
 
-    let currentPage = 1;
     const pageSize = 24;
+    
+    // 各表格分页状态
+    let playerPage = 1, teamPage = 1, positionPage = 1, collegePage = 1;
     let filteredPlayersCache = [];
+    let filteredTeamsCache = [];
+    let filteredPositionsCache = [];
+    let filteredCollegesCache = [];
 
     // 切换标签页
     function showTab(tabId) {
@@ -315,7 +360,7 @@
             return;
         }
 
-        const start = (currentPage - 1) * pageSize;
+        const start = (playerPage - 1) * pageSize;
         const end = start + pageSize;
         const pageData = players.slice(start, end);
 
@@ -333,7 +378,7 @@
         </tr>
     `).join('');
 
-        renderPagination(players.length);
+        renderPaginationGeneric('pagination', players.length, playerPage, changePlayerPage);
     }
 
 
@@ -362,7 +407,7 @@
             return matchName && matchPos && matchHof;
         });
 
-        currentPage = 1;   // ⭐ 重置页码
+        playerPage = 1;
         renderPlayers(filtered);
     }
 
@@ -379,19 +424,30 @@
         }
     }
 
-    function renderPositions() {
+    function renderPositions(positions) {
+        positions = positions || allPositions;
+        filteredPositionsCache = positions;
+        
         const tbody = document.getElementById('positionTable');
-        if (allPositions.length === 0) {
+        if (positions.length === 0) {
             tbody.innerHTML = '<tr><td colspan="3">暂无数据</td></tr>';
+            document.getElementById('positionPagination').innerHTML = '';
             return;
         }
-        tbody.innerHTML = allPositions.map(p => `
+        
+        const start = (positionPage - 1) * pageSize;
+        const end = start + pageSize;
+        const pageData = positions.slice(start, end);
+        
+        tbody.innerHTML = pageData.map(p => `
             <tr>
                 <td><span class="badge badge-blue">${p.positionCode}</span></td>
                 <td>${p.positionName || '-'}</td>
                 <td>${p.positionDesc || '-'}</td>
             </tr>
         `).join('');
+        
+        renderPaginationGeneric('positionPagination', positions.length, positionPage, changePositionPage);
     }
 
     function populatePositionFilter() {
@@ -420,12 +476,21 @@
     }
 
     function renderColleges(colleges) {
+        colleges = colleges || allColleges;
+        filteredCollegesCache = colleges;
+        
         const tbody = document.getElementById('collegeTable');
         if (colleges.length === 0) {
             tbody.innerHTML = '<tr><td colspan="4">暂无数据</td></tr>';
+            document.getElementById('collegePagination').innerHTML = '';
             return;
         }
-        tbody.innerHTML = colleges.map(c => `
+        
+        const start = (collegePage - 1) * pageSize;
+        const end = start + pageSize;
+        const pageData = colleges.slice(start, end);
+        
+        tbody.innerHTML = pageData.map(c => `
             <tr>
                 <td>${c.id}</td>
                 <td>${c.playerId}</td>
@@ -433,18 +498,21 @@
                 <td>${c.collegeName}</td>
             </tr>
         `).join('');
+        
+        renderPaginationGeneric('collegePagination', colleges.length, collegePage, changeCollegePage);
     }
 
     function filterColleges() {
         const search = document.getElementById('collegeSearch').value.toLowerCase();
         const filtered = allColleges.filter(c => c.collegeName.toLowerCase().includes(search));
+        collegePage = 1;
         renderColleges(filtered);
     }
 
-    // 分页
-    function renderPagination(total) {
+    // 通用分页渲染
+    function renderPaginationGeneric(containerId, total, currentPage, changeFunc) {
         const totalPages = Math.ceil(total / pageSize);
-        const container = document.getElementById('pagination');
+        const container = document.getElementById(containerId);
 
         if (totalPages <= 1) {
             container.innerHTML = '';
@@ -454,14 +522,7 @@
         const maxAround = 2;
         let html = '';
 
-        // 上一页
-        html += `
-        <button class="page-btn"
-            onclick="changePage(${currentPage - 1})"
-            ${currentPage === 1 ? 'disabled' : ''}>
-            上一页
-        </button>
-    `;
+        html += `<button class="page-btn" onclick="${changeFunc.name}(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>`;
 
         const pages = [];
         pages.push(1);
@@ -473,7 +534,7 @@
         for (let i = start; i <= end; i++) pages.push(i);
         if (end < totalPages - 1) pages.push('...');
 
-        pages.push(totalPages);
+        if (totalPages > 1) pages.push(totalPages);
 
         pages.forEach(p => {
             if (p === '...') {
@@ -481,41 +542,120 @@
             } else if (p === currentPage) {
                 html += `<button class="page-btn active">${p}</button>`;
             } else {
-                html += `
-                <button class="page-btn" onclick="changePage(${p})">
-                    ${p}
-                </button>
-            `;
+                html += `<button class="page-btn" onclick="${changeFunc.name}(${p})">${p}</button>`;
             }
         });
 
-        // 下一页
-        html += `
-        <button class="page-btn"
-            onclick="changePage(${currentPage + 1})"
-            ${currentPage === totalPages ? 'disabled' : ''}>
-            下一页
-        </button>
-    `;
+        html += `<button class="page-btn" onclick="${changeFunc.name}(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>下一页</button>`;
 
         container.innerHTML = html;
     }
 
-
-
-    function changePage(page) {
+    function changePlayerPage(page) {
         const totalPages = Math.ceil(filteredPlayersCache.length / pageSize);
         if (page < 1 || page > totalPages) return;
-        currentPage = page;
+        playerPage = page;
         renderPlayers(filteredPlayersCache);
     }
 
+    function changeTeamPage(page) {
+        const totalPages = Math.ceil(filteredTeamsCache.length / pageSize);
+        if (page < 1 || page > totalPages) return;
+        teamPage = page;
+        renderTeams(filteredTeamsCache);
+    }
+
+    function changePositionPage(page) {
+        const totalPages = Math.ceil(filteredPositionsCache.length / pageSize);
+        if (page < 1 || page > totalPages) return;
+        positionPage = page;
+        renderPositions(filteredPositionsCache);
+    }
+
+    function changeCollegePage(page) {
+        const totalPages = Math.ceil(filteredCollegesCache.length / pageSize);
+        if (page < 1 || page > totalPages) return;
+        collegePage = page;
+        renderColleges(filteredCollegesCache);
+    }
+
+
+    // 加载球队数据
+    async function loadTeams() {
+        try {
+            const res = await fetch('/api/teams');
+            allTeams = await res.json();
+            renderTeams(allTeams);
+            renderTeamStats();
+        } catch (e) {
+            document.getElementById('teamTable').innerHTML = '<tr><td colspan="11">加载失败</td></tr>';
+        }
+    }
+
+    function renderTeams(teams) {
+        teams = teams || allTeams;
+        filteredTeamsCache = teams;
+        
+        const tbody = document.getElementById('teamTable');
+        if (teams.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="11">暂无数据</td></tr>';
+            document.getElementById('teamPagination').innerHTML = '';
+            return;
+        }
+        
+        const start = (teamPage - 1) * pageSize;
+        const end = start + pageSize;
+        const pageData = teams.slice(start, end);
+        
+        tbody.innerHTML = pageData.map(t => `
+            <tr>
+                <td class="${t.championships > 0 ? 'hall-of-fame' : ''}">${t.franchiseName}</td>
+                <td><span class="badge badge-blue">${t.league}</span></td>
+                <td>${t.yearFrom}</td>
+                <td>${t.years}</td>
+                <td>${t.wins}</td>
+                <td>${t.losses}</td>
+                <td>${(t.winLossPct * 100).toFixed(1)}%</td>
+                <td>${t.playoffs}</td>
+                <td>${t.divisionTitles}</td>
+                <td>${t.conferenceTitles}</td>
+                <td>${t.championships > 0 ? '<span class="badge badge-gold">🏆 ' + t.championships + '</span>' : '-'}</td>
+            </tr>
+        `).join('');
+        
+        renderPaginationGeneric('teamPagination', teams.length, teamPage, changeTeamPage);
+    }
+
+    function renderTeamStats() {
+        const total = allTeams.length;
+        const champs = allTeams.filter(t => t.championships > 0).length;
+        const totalChampionships = allTeams.reduce((sum, t) => sum + t.championships, 0);
+        document.getElementById('teamStats').innerHTML = `
+            <div class="stat-card"><div class="number">${total}</div><div class="label">球队总数</div></div>
+            <div class="stat-card"><div class="number">${champs}</div><div class="label">有冠军球队</div></div>
+            <div class="stat-card"><div class="number">${totalChampionships}</div><div class="label">总冠军数</div></div>
+        `;
+    }
+
+    function filterTeams() {
+        const search = document.getElementById('teamSearch').value.toLowerCase();
+        const champ = document.getElementById('champFilter').value;
+        
+        const filtered = allTeams.filter(t => {
+            const matchName = t.franchiseName.toLowerCase().includes(search);
+            const matchChamp = champ === '' || (champ === '1' ? t.championships > 0 : t.championships === 0);
+            return matchName && matchChamp;
+        });
+        teamPage = 1;
+        renderTeams(filtered);
+    }
 
     // 初始化
     async function init() {
         await loadPlayers();
         await loadPositions();
         await loadColleges();
+        await loadTeams();
     }
     init();
 </script>

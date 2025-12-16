@@ -9,5 +9,4 @@ node_modules/
 dist/
 build/
 target/
-target/classes/com/james/system/JamesApplication.class
 privatedoc/

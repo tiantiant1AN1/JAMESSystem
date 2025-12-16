@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.james.system.mapper.NbaTeamMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.james.system.entity.NbaTeam">
+        <id column="team_id" property="teamId"/>
+        <result column="franchise_name" property="franchiseName"/>
+        <result column="league" property="league"/>
+        <result column="year_from" property="yearFrom"/>
+        <result column="year_to" property="yearTo"/>
+        <result column="years" property="years"/>
+        <result column="games" property="games"/>
+        <result column="wins" property="wins"/>
+        <result column="losses" property="losses"/>
+        <result column="win_loss_pct" property="winLossPct"/>
+        <result column="playoffs" property="playoffs"/>
+        <result column="division_titles" property="divisionTitles"/>
+        <result column="conference_titles" property="conferenceTitles"/>
+        <result column="championships" property="championships"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        team_id, franchise_name, league, year_from, year_to, years, games, wins, losses,
+        win_loss_pct, playoffs, division_titles, conference_titles, championships, created_at, updated_at
+    </sql>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM nba_teams
+        WHERE team_id = #{teamId}
+    </select>
+
+    <!-- 查询所有 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM nba_teams
+        ORDER BY franchise_name
+    </select>
+
+    <!-- 根据名称模糊查询 -->
+    <select id="selectByName" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM nba_teams
+        WHERE franchise_name LIKE CONCAT('%', #{franchiseName}, '%')
+    </select>
+
+    <!-- 查询有总冠军的球队 -->
+    <select id="selectChampions" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM nba_teams
+        WHERE championships > 0
+        ORDER BY championships DESC
+    </select>
+
+    <!-- 按总冠军数排序 -->
+    <select id="selectOrderByChampionships" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM nba_teams
+        ORDER BY championships DESC, wins DESC
+    </select>
+
+    <!-- 新增 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="teamId">
+        INSERT INTO nba_teams (franchise_name, league, year_from, year_to, years, games, wins, losses,
+            win_loss_pct, playoffs, division_titles, conference_titles, championships)
+        VALUES (#{franchiseName}, #{league}, #{yearFrom}, #{yearTo}, #{years}, #{games}, #{wins}, #{losses},
+            #{winLossPct}, #{playoffs}, #{divisionTitles}, #{conferenceTitles}, #{championships})
+    </insert>
+
+    <!-- 更新 -->
+    <update id="update">
+        UPDATE nba_teams
+        SET franchise_name = #{franchiseName},
+            league = #{league},
+            year_from = #{yearFrom},
+            year_to = #{yearTo},
+            years = #{years},
+            games = #{games},
+            wins = #{wins},
+            losses = #{losses},
+            win_loss_pct = #{winLossPct},
+            playoffs = #{playoffs},
+            division_titles = #{divisionTitles},
+            conference_titles = #{conferenceTitles},
+            championships = #{championships}
+        WHERE team_id = #{teamId}
+    </update>
+
+    <!-- 删除 -->
+    <delete id="deleteById">
+        DELETE FROM nba_teams WHERE team_id = #{teamId}
+    </delete>
+
+</mapper>
