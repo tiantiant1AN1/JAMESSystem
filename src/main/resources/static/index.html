@@ -188,6 +188,8 @@
     <div class="tabs">
         <button class="tab-btn active" onclick="showTab('players')">👤 球员列表</button>
         <button class="tab-btn" onclick="showTab('teams')">🏀 球队列表</button>
+        <button class="tab-btn" onclick="showTab('games')">🎮 比赛记录</button>
+        <button class="tab-btn" onclick="showTab('seasonStats')">📊 赛季统计</button>
         <button class="tab-btn" onclick="showTab('positions')">📍 位置字典</button>
         <button class="tab-btn" onclick="showTab('colleges')">🎓 球员大学</button>
     </div>
@@ -267,6 +269,71 @@
         <div id="teamPagination" class="pagination"></div>
     </div>
 
+    <!-- 比赛记录 -->
+    <div id="games" class="tab-content">
+        <div class="stats-grid" id="gameStats"></div>
+        <div class="search-box">
+            <input type="text" id="gameSeasonFilter" placeholder="赛季 (如: 2023-24)" onkeyup="filterGames()">
+            <select id="gameTypeFilter" onchange="filterGames()">
+                <option value="">全部类型</option>
+                <option value="Regular Season">常规赛</option>
+                <option value="Playoffs">季后赛</option>
+            </select>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>比赛ID</th>
+                        <th>日期</th>
+                        <th>主队</th>
+                        <th>比分</th>
+                        <th>客队</th>
+                        <th>赛季</th>
+                        <th>类型</th>
+                    </tr>
+                </thead>
+                <tbody id="gameTable">
+                    <tr><td colspan="7" class="loading">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="gamePagination" class="pagination"></div>
+    </div>
+
+    <!-- 赛季统计 -->
+    <div id="seasonStats" class="tab-content">
+        <div class="stats-grid" id="seasonStatsCards"></div>
+        <div class="search-box">
+            <input type="text" id="statsSeasonFilter" placeholder="赛季 (如: 2023-24)" onkeyup="filterSeasonStats()">
+            <input type="text" id="statsPlayerFilter" placeholder="球员ID" onkeyup="filterSeasonStats()">
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>球员ID</th>
+                        <th>赛季</th>
+                        <th>球队</th>
+                        <th>场次</th>
+                        <th>首发</th>
+                        <th>得分</th>
+                        <th>篮板</th>
+                        <th>助攻</th>
+                        <th>抢断</th>
+                        <th>盖帽</th>
+                        <th>投篮%</th>
+                        <th>三分%</th>
+                    </tr>
+                </thead>
+                <tbody id="seasonStatsTable">
+                    <tr><td colspan="12" class="loading">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="seasonStatsPagination" class="pagination"></div>
+    </div>
+
     <!-- 位置字典 -->
     <div id="positions" class="tab-content">
         <div class="table-wrapper">
@@ -316,16 +383,20 @@
     let allPositions = [];
     let allColleges = [];
     let allTeams = [];
+    let allGames = [];
+    let allSeasonStats = [];
     let playerMap = {};
 
     const pageSize = 24;
     
     // 各表格分页状态
-    let playerPage = 1, teamPage = 1, positionPage = 1, collegePage = 1;
+    let playerPage = 1, teamPage = 1, positionPage = 1, collegePage = 1, gamePage = 1, seasonStatsPage = 1;
     let filteredPlayersCache = [];
     let filteredTeamsCache = [];
     let filteredPositionsCache = [];
     let filteredCollegesCache = [];
+    let filteredGamesCache = [];
+    let filteredSeasonStatsCache = [];
 
     // 切换标签页
     function showTab(tabId) {
@@ -650,12 +721,167 @@
         renderTeams(filtered);
     }
 
+    // 加载比赛数据
+    async function loadGames() {
+        try {
+            const res = await fetch('/api/games');
+            allGames = await res.json();
+            renderGames(allGames);
+            renderGameStats();
+        } catch (e) {
+            document.getElementById('gameTable').innerHTML = '<tr><td colspan="7">加载失败</td></tr>';
+        }
+    }
+
+    function renderGames(games) {
+        games = games || allGames;
+        filteredGamesCache = games;
+        
+        const tbody = document.getElementById('gameTable');
+        if (games.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7">暂无数据</td></tr>';
+            document.getElementById('gamePagination').innerHTML = '';
+            return;
+        }
+        
+        const start = (gamePage - 1) * pageSize;
+        const end = start + pageSize;
+        const pageData = games.slice(start, end);
+        
+        tbody.innerHTML = pageData.map(g => {
+            const homeWin = g.homeTeamScore > g.awayTeamScore;
+            return `
+            <tr>
+                <td>${g.gameId || '-'}</td>
+                <td>${g.gameDate || '-'}</td>
+                <td class="${homeWin ? 'hall-of-fame' : ''}">${g.homeTeamId || '-'}</td>
+                <td><span class="badge ${homeWin ? 'badge-gold' : 'badge-blue'}">${g.homeTeamScore || 0}</span> - <span class="badge ${!homeWin ? 'badge-gold' : 'badge-blue'}">${g.awayTeamScore || 0}</span></td>
+                <td class="${!homeWin ? 'hall-of-fame' : ''}">${g.awayTeamId || '-'}</td>
+                <td>${g.seasonYear || '-'}</td>
+                <td><span class="badge badge-blue">${g.gameType || '-'}</span></td>
+            </tr>
+        `}).join('');
+        
+        renderPaginationGeneric('gamePagination', games.length, gamePage, changeGamePage);
+    }
+
+    function renderGameStats() {
+        const total = allGames.length;
+        const seasons = [...new Set(allGames.map(g => g.seasonYear))].length;
+        const playoffs = allGames.filter(g => g.gameType === 'Playoffs').length;
+        document.getElementById('gameStats').innerHTML = `
+            <div class="stat-card"><div class="number">${total}</div><div class="label">比赛总数</div></div>
+            <div class="stat-card"><div class="number">${seasons}</div><div class="label">赛季数</div></div>
+            <div class="stat-card"><div class="number">${playoffs}</div><div class="label">季后赛场次</div></div>
+        `;
+    }
+
+    function filterGames() {
+        const season = document.getElementById('gameSeasonFilter').value.toLowerCase();
+        const gameType = document.getElementById('gameTypeFilter').value;
+        
+        const filtered = allGames.filter(g => {
+            const matchSeason = !season || (g.seasonYear && g.seasonYear.toLowerCase().includes(season));
+            const matchType = !gameType || g.gameType === gameType;
+            return matchSeason && matchType;
+        });
+        gamePage = 1;
+        renderGames(filtered);
+    }
+
+    function changeGamePage(page) {
+        const totalPages = Math.ceil(filteredGamesCache.length / pageSize);
+        if (page < 1 || page > totalPages) return;
+        gamePage = page;
+        renderGames(filteredGamesCache);
+    }
+
+    // 加载赛季统计数据
+    async function loadSeasonStats() {
+        try {
+            const res = await fetch('/api/season-stats');
+            allSeasonStats = await res.json();
+            renderSeasonStats(allSeasonStats);
+            renderSeasonStatsCards();
+        } catch (e) {
+            document.getElementById('seasonStatsTable').innerHTML = '<tr><td colspan="12">加载失败</td></tr>';
+        }
+    }
+
+    function renderSeasonStats(stats) {
+        stats = stats || allSeasonStats;
+        filteredSeasonStatsCache = stats;
+        
+        const tbody = document.getElementById('seasonStatsTable');
+        if (stats.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="12">暂无数据</td></tr>';
+            document.getElementById('seasonStatsPagination').innerHTML = '';
+            return;
+        }
+        
+        const start = (seasonStatsPage - 1) * pageSize;
+        const end = start + pageSize;
+        const pageData = stats.slice(start, end);
+        
+        tbody.innerHTML = pageData.map(s => `
+            <tr>
+                <td>${s.playerId || '-'}</td>
+                <td>${s.seasonYear || '-'}</td>
+                <td>${s.teamId || '-'}</td>
+                <td>${s.gp || 0}</td>
+                <td>${s.gs || 0}</td>
+                <td class="hall-of-fame">${s.pts || 0}</td>
+                <td>${s.reb || 0}</td>
+                <td>${s.ast || 0}</td>
+                <td>${s.stl || 0}</td>
+                <td>${s.blk || 0}</td>
+                <td>${s.fgPct ? (s.fgPct * 100).toFixed(1) + '%' : '-'}</td>
+                <td>${s.fg3Pct ? (s.fg3Pct * 100).toFixed(1) + '%' : '-'}</td>
+            </tr>
+        `).join('');
+        
+        renderPaginationGeneric('seasonStatsPagination', stats.length, seasonStatsPage, changeSeasonStatsPage);
+    }
+
+    function renderSeasonStatsCards() {
+        const total = allSeasonStats.length;
+        const seasons = [...new Set(allSeasonStats.map(s => s.seasonYear))].length;
+        const avgPts = allSeasonStats.length > 0 ? (allSeasonStats.reduce((sum, s) => sum + (s.pts || 0), 0) / allSeasonStats.length).toFixed(1) : 0;
+        document.getElementById('seasonStatsCards').innerHTML = `
+            <div class="stat-card"><div class="number">${total}</div><div class="label">统计记录数</div></div>
+            <div class="stat-card"><div class="number">${seasons}</div><div class="label">赛季数</div></div>
+            <div class="stat-card"><div class="number">${avgPts}</div><div class="label">平均得分</div></div>
+        `;
+    }
+
+    function filterSeasonStats() {
+        const season = document.getElementById('statsSeasonFilter').value.toLowerCase();
+        const playerId = document.getElementById('statsPlayerFilter').value.toLowerCase();
+        
+        const filtered = allSeasonStats.filter(s => {
+            const matchSeason = !season || (s.seasonYear && s.seasonYear.toLowerCase().includes(season));
+            const matchPlayer = !playerId || (s.playerId && s.playerId.toLowerCase().includes(playerId));
+            return matchSeason && matchPlayer;
+        });
+        seasonStatsPage = 1;
+        renderSeasonStats(filtered);
+    }
+
+    function changeSeasonStatsPage(page) {
+        const totalPages = Math.ceil(filteredSeasonStatsCache.length / pageSize);
+        if (page < 1 || page > totalPages) return;
+        seasonStatsPage = page;
+        renderSeasonStats(filteredSeasonStatsCache);
+    }
+
     // 初始化
     async function init() {
         await loadPlayers();
         await loadPositions();
         await loadColleges();
         await loadTeams();
+        await loadGames();
+        await loadSeasonStats();
     }
     init();
 </script>
