@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.james.system.mapper.GameDetailMapper">
+
+    <resultMap id="BaseResultMap" type="com.james.system.entity.GameDetail">
+        <id column="id" property="id"/>
+        <result column="game_id" property="gameId"/>
+        <result column="player_id" property="playerId"/>
+        <result column="team_id" property="teamId"/>
+        <result column="is_home" property="isHome"/>
+        <result column="min" property="min"/>
+        <result column="fgm" property="fgm"/>
+        <result column="fga" property="fga"/>
+        <result column="fg_pct" property="fgPct"/>
+        <result column="fg3m" property="fg3m"/>
+        <result column="fg3a" property="fg3a"/>
+        <result column="fg3_pct" property="fg3Pct"/>
+        <result column="ftm" property="ftm"/>
+        <result column="fta" property="fta"/>
+        <result column="ft_pct" property="ftPct"/>
+        <result column="oreb" property="oreb"/>
+        <result column="dreb" property="dreb"/>
+        <result column="reb" property="reb"/>
+        <result column="ast" property="ast"/>
+        <result column="stl" property="stl"/>
+        <result column="blk" property="blk"/>
+        <result column="tov" property="tov"/>
+        <result column="pf" property="pf"/>
+        <result column="pts" property="pts"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, game_id, player_id, team_id, is_home, min, fgm, fga, fg_pct, fg3m, fg3a, fg3_pct,
+        ftm, fta, ft_pct, oreb, dreb, reb, ast, stl, blk, tov, pf, pts, created_at, updated_at
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM game_details WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM game_details
+    </select>
+
+    <select id="selectByGameId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM game_details WHERE game_id = #{gameId}
+    </select>
+
+    <select id="selectByPlayerId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM game_details WHERE player_id = #{playerId}
+    </select>
+
+    <select id="selectByTeamId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM game_details WHERE team_id = #{teamId}
+    </select>
+
+    <select id="selectByGameAndPlayer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM game_details 
+        WHERE game_id = #{gameId} AND player_id = #{playerId}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO game_details (game_id, player_id, team_id, is_home, min, fgm, fga, fg_pct,
+            fg3m, fg3a, fg3_pct, ftm, fta, ft_pct, oreb, dreb, reb, ast, stl, blk, tov, pf, pts,
+            created_at, updated_at)
+        VALUES (#{gameId}, #{playerId}, #{teamId}, #{isHome}, #{min}, #{fgm}, #{fga}, #{fgPct},
+            #{fg3m}, #{fg3a}, #{fg3Pct}, #{ftm}, #{fta}, #{ftPct}, #{oreb}, #{dreb}, #{reb},
+            #{ast}, #{stl}, #{blk}, #{tov}, #{pf}, #{pts}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE game_details SET
+            team_id = #{teamId},
+            is_home = #{isHome},
+            min = #{min},
+            fgm = #{fgm},
+            fga = #{fga},
+            fg_pct = #{fgPct},
+            fg3m = #{fg3m},
+            fg3a = #{fg3a},
+            fg3_pct = #{fg3Pct},
+            ftm = #{ftm},
+            fta = #{fta},
+            ft_pct = #{ftPct},
+            oreb = #{oreb},
+            dreb = #{dreb},
+            reb = #{reb},
+            ast = #{ast},
+            stl = #{stl},
+            blk = #{blk},
+            tov = #{tov},
+            pf = #{pf},
+            pts = #{pts},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM game_details WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteByGameId">
+        DELETE FROM game_details WHERE game_id = #{gameId}
+    </delete>
+</mapper>

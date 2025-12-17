@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.james.system.mapper.GameMapper">
+
+    <resultMap id="BaseResultMap" type="com.james.system.entity.Game">
+        <id column="id" property="id"/>
+        <result column="game_id" property="gameId"/>
+        <result column="game_date" property="gameDate"/>
+        <result column="home_team_id" property="homeTeamId"/>
+        <result column="away_team_id" property="awayTeamId"/>
+        <result column="home_team_score" property="homeTeamScore"/>
+        <result column="away_team_score" property="awayTeamScore"/>
+        <result column="season_year" property="seasonYear"/>
+        <result column="game_type" property="gameType"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, game_id, game_date, home_team_id, away_team_id, home_team_score, 
+        away_team_score, season_year, game_type, created_at, updated_at
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM games WHERE id = #{id}
+    </select>
+
+    <select id="selectByGameId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM games WHERE game_id = #{gameId}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM games ORDER BY game_date DESC
+    </select>
+
+    <select id="selectBySeasonYear" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM games 
+        WHERE season_year = #{seasonYear} ORDER BY game_date DESC
+    </select>
+
+    <select id="selectByDateRange" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM games 
+        WHERE game_date BETWEEN #{startDate} AND #{endDate} ORDER BY game_date DESC
+    </select>
+
+    <select id="selectByTeamId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM games 
+        WHERE home_team_id = #{teamId} OR away_team_id = #{teamId} ORDER BY game_date DESC
+    </select>
+
+    <select id="selectByGameType" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM games 
+        WHERE game_type = #{gameType} ORDER BY game_date DESC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO games (game_id, game_date, home_team_id, away_team_id, home_team_score, 
+            away_team_score, season_year, game_type, created_at, updated_at)
+        VALUES (#{gameId}, #{gameDate}, #{homeTeamId}, #{awayTeamId}, #{homeTeamScore}, 
+            #{awayTeamScore}, #{seasonYear}, #{gameType}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE games SET
+            game_date = #{gameDate},
+            home_team_id = #{homeTeamId},
+            away_team_id = #{awayTeamId},
+            home_team_score = #{homeTeamScore},
+            away_team_score = #{awayTeamScore},
+            season_year = #{seasonYear},
+            game_type = #{gameType},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM games WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteByGameId">
+        DELETE FROM games WHERE game_id = #{gameId}
+    </delete>
+</mapper>

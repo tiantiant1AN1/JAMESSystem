@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.james.system.mapper.SeasonStatsMapper">
+
+    <resultMap id="BaseResultMap" type="com.james.system.entity.SeasonStats">
+        <id column="id" property="id"/>
+        <result column="player_id" property="playerId"/>
+        <result column="season_year" property="seasonYear"/>
+        <result column="team_id" property="teamId"/>
+        <result column="gp" property="gp"/>
+        <result column="gs" property="gs"/>
+        <result column="min" property="min"/>
+        <result column="fgm" property="fgm"/>
+        <result column="fga" property="fga"/>
+        <result column="fg_pct" property="fgPct"/>
+        <result column="fg3m" property="fg3m"/>
+        <result column="fg3a" property="fg3a"/>
+        <result column="fg3_pct" property="fg3Pct"/>
+        <result column="ftm" property="ftm"/>
+        <result column="fta" property="fta"/>
+        <result column="ft_pct" property="ftPct"/>
+        <result column="oreb" property="oreb"/>
+        <result column="dreb" property="dreb"/>
+        <result column="reb" property="reb"/>
+        <result column="ast" property="ast"/>
+        <result column="stl" property="stl"/>
+        <result column="blk" property="blk"/>
+        <result column="tov" property="tov"/>
+        <result column="pf" property="pf"/>
+        <result column="pts" property="pts"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, player_id, season_year, team_id, gp, gs, min, fgm, fga, fg_pct, fg3m, fg3a, fg3_pct,
+        ftm, fta, ft_pct, oreb, dreb, reb, ast, stl, blk, tov, pf, pts, created_at, updated_at
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM season_stats WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM season_stats ORDER BY season_year DESC
+    </select>
+
+    <select id="selectByPlayerId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM season_stats 
+        WHERE player_id = #{playerId} ORDER BY season_year DESC
+    </select>
+
+    <select id="selectBySeasonYear" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM season_stats 
+        WHERE season_year = #{seasonYear} ORDER BY pts DESC
+    </select>
+
+    <select id="selectByTeamId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM season_stats 
+        WHERE team_id = #{teamId} ORDER BY season_year DESC
+    </select>
+
+    <select id="selectByPlayerAndSeason" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM season_stats 
+        WHERE player_id = #{playerId} AND season_year = #{seasonYear}
+    </select>
+
+    <select id="selectTopScorers" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM season_stats 
+        WHERE season_year = #{seasonYear} ORDER BY pts DESC LIMIT #{limit}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO season_stats (player_id, season_year, team_id, gp, gs, min, fgm, fga, fg_pct,
+            fg3m, fg3a, fg3_pct, ftm, fta, ft_pct, oreb, dreb, reb, ast, stl, blk, tov, pf, pts,
+            created_at, updated_at)
+        VALUES (#{playerId}, #{seasonYear}, #{teamId}, #{gp}, #{gs}, #{min}, #{fgm}, #{fga}, #{fgPct},
+            #{fg3m}, #{fg3a}, #{fg3Pct}, #{ftm}, #{fta}, #{ftPct}, #{oreb}, #{dreb}, #{reb},
+            #{ast}, #{stl}, #{blk}, #{tov}, #{pf}, #{pts}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE season_stats SET
+            team_id = #{teamId},
+            gp = #{gp},
+            gs = #{gs},
+            min = #{min},
+            fgm = #{fgm},
+            fga = #{fga},
+            fg_pct = #{fgPct},
+            fg3m = #{fg3m},
+            fg3a = #{fg3a},
+            fg3_pct = #{fg3Pct},
+            ftm = #{ftm},
+            fta = #{fta},
+            ft_pct = #{ftPct},
+            oreb = #{oreb},
+            dreb = #{dreb},
+            reb = #{reb},
+            ast = #{ast},
+            stl = #{stl},
+            blk = #{blk},
+            tov = #{tov},
+            pf = #{pf},
+            pts = #{pts},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM season_stats WHERE id = #{id}
+    </delete>
+</mapper>
